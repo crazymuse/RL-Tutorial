@@ -26,7 +26,7 @@ class Grid(object):
         self.curpos =self.start;
         self.t=0;
 
-    def sample(self,action,epsilon=0.5):
+    def greedy_sample(self,action,epsilon=0.5):
         rnum = np.random.random();
         if (rnum<epsilon):
             return action;
@@ -35,10 +35,18 @@ class Grid(object):
             allactions = np.delete(np.arange(4),action);
             return allactions[rnum2];
 
-    def getbestaction(self):
-        return self.policy[self.curpos[0]][self.curpos[1]];
-    
-    def step(self,action,epsilon=0.5,update=True):
+    def get_state(self):
+        return self.curpos;
+
+    def get_q_value(self,pos):
+        return np.squeeze(self.qvalue[:,pos[0],pos[1]]);
+
+    def set_q_value(self,pos,qary):
+        self.qvalue[:,pos[0],pos[1]]=qary;
+        self.policy[pos[0],pos[1]] = np.argmax(qary)
+
+
+    def step(self,action,update=True):
         self.t+=1;
         for terminal in self.terminals:
             self.value[terminal[0]][terminal[1]]=self.terminalval;
@@ -46,7 +54,6 @@ class Grid(object):
         action = int(action)
         if action>=4 or action<0:
             raise Exception('Action value should be [0,1,2,3]')
-        action = self.sample(action,epsilon);
         if action == 0: #North, decrement x
             nextpos[0] = self.curpos[0]-1;
             nextpos[1] = self.curpos[1];
@@ -61,15 +68,16 @@ class Grid(object):
             nextpos[1] = self.curpos[1];
         #Update Current position
         if self.isOutOfBound(nextpos):
-            return (False,-1,self.curpos);
+            self.reset()
+            return (True,-1);
         if self.isTerminal(nextpos):
             if update == True:
                 self.reset()
-            return (True,1,nextpos);
+            return (True,1);
             self.t=0;
         if update == True:
             self.updatePos(nextpos)
-        return (False,0,nextpos)
+        return (False,0)
     def isOutOfBound(self,nextpos):
         if nextpos[0]<0 or nextpos[0]>=self.length \
           or nextpos[1]<0 or nextpos[1]>=self.width :
@@ -93,7 +101,7 @@ class Grid(object):
         for row in self.grid:
             print ('|'+' '.join(row.decode('utf-8'))+'|')
 
-    def displayPolicy(self):
+    def display_policy(self):
         #NEWS
         arrowDict = {0:'\u2191',1:'\u2192',2:'\u2190',3:'\u2193'}
         for row in self.policy:
